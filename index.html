@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Database</title>
+    <style>
+        body { font-family: system-ui; padding: 20px; background: #f5f5f5; }
+        .header { background: #007aff; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .match-card { background: white; padding: 16px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .team-row { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; }
+        .live { color: #ff3b30; font-weight: bold; }
+        .finished { color: #8e8e93; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚽ Football Database</h1>
+        <div id="status">Caricamento...</div>
+    </div>
+    <div id="matches"></div>
+
+    <script>
+        // CONFIGURAZIONE
+        const CONFIG = {
+            API_KEY: 'e87c9bf2a8d74557b85159bb408a57c5',
+            COMPETITION: 'SA'
+        };
+
+        // PROXY CORS - USA QUESTO ENDPOINT
+        const PROXY_URL = 'https://api.allorigins.win/raw?url=' + 
+            encodeURIComponent('https://api.football-data.org/v4/competitions/' + CONFIG.COMPETITION + '/matches?status=SCHEDULED,LIVE,FINISHED');
+
+        function loadMatches() {
+            fetch(PROXY_URL)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) throw new Error(data.error);
+                    renderMatches(data.matches || []);
+                    document.getElementById('status').textContent = 'Dati aggiornati';
+                })
+                .catch(e => {
+                    console.error(e);
+                    document.getElementById('status').innerHTML = '<span style="color:#ff3b30">Errore: ' + e.message + '</span>';
+                    // Fallback con dati statici di esempio
+                    renderMatches([]);
+                });
+        }
+
+        function renderMatches(matches) {
+            const container = document.getElementById('matches');
+            if (!matches.length) {
+                container.innerHTML = '<p>Nessuna partita trovata o errore API</p>';
+                return;
+            }
+
+            container.innerHTML = matches.slice(0, 10).map(m => {
+                const isLive = m.status === 'IN_PLAY';
+                const isFinished = m.status === 'FINISHED';
+                const homeScore = m.score?.fullTime?.home ?? '-';
+                const awayScore = m.score?.fullTime?.away ?? '-';
+                const time = new Date(m.utcDate).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
+                
+                return `
+                    <div class="match-card">
+                        <div class="team-row">
+                            <span>${m.homeTeam.name}</span>
+                            <span class="${isLive ? 'live' : (isFinished ? 'finished' : '')}">${homeScore}</span>
+                        </div>
+                        <div class="team-row">
+                            <span>${m.awayTeam.name}</span>
+                            <span class="${isLive ? 'live' : (isFinished ? 'finished' : '')}">${awayScore}</span>
+                        </div>
+                        <div style="text-align: right; font-size: 12px; color: #8e8e93; margin-top: 8px;">
+                            ${isLive ? '<span class="live">● LIVE</span>' : (isFinished ? 'Finita' : time)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Carica all'avvio
+        loadMatches();
+        
+        // Auto-refresh ogni 60 secondi
+        setInterval(loadMatches, 60000);
+    </script>
+</body>
+</html>
