@@ -1,0 +1,8 @@
+{
+  "name": "Football Database",
+  "short_name": "Football DB",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007aff"
+}
