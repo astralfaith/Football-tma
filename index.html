@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <title>Football Database - Dati Reali</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-hint-color: #8e8e93;
+            --tg-theme-link-color: #007aff;
+            --tg-theme-button-color: #007aff;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-secondary-bg-color: #f2f2f7;
+            --tg-theme-header-bg-color: #ffffff;
+            --tg-theme-accent-text-color: #007aff;
+            --tg-theme-section-bg-color: #ffffff;
+            --tg-theme-section-header-text-color: #6d6d6d;
+            --tg-theme-subtitle-text-color: #8e8e93;
+            --tg-theme-destructive-text-color: #ff3b30;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            overflow-x: hidden;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--tg-theme-header-bg-color);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 100;
+            border-bottom: 0.5px solid rgba(0,0,0,0.1);
+            padding: 12px 16px;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--tg-theme-text-color);
+            letter-spacing: -0.5px;
+        }
+
+        .header-subtitle {
+            font-size: 13px;
+            color: var(--tg-theme-subtitle-text-color);
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #ff3b30;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(0.98); }
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .refresh-btn {
+            background: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.9);
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+        }
+
+        .refresh-btn.spinning svg {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: var(--tg-theme-secondary-bg-color);
+            padding: 4px;
+            margin: 12px 16px;
+            border-radius: 10px;
+            gap: 4px;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 10px 8px;
+            border: none;
+            background: transparent;
+            color: var(--tg-theme-text-color);
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .nav-tab.active {
+            background: var(--tg-theme-section-bg-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            color: var(--tg-theme-text-color);
+        }
+
+        .competition-section {
+            margin: 0 16px 12px;
+        }
+
+        .section-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--tg-theme-section-header-text-color);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .competition-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .competition-card {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 12px;
+            padding: 12px 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            text-align: center;
+        }
+
+        .competition-card:active {
+            transform: scale(0.95);
+        }
+
+        .competition-card.active {
+            border-color: var(--tg-theme-button-color);
+            background: var(--tg-theme-section-bg-color);
+        }
+
+        .competition-flag {
+            font-size: 28px;
+            margin-bottom: 4px;
+            line-height: 1;
+        }
+
+        .competition-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--tg-theme-text-color);
+            line-height: 1.2;
+        }
+
+        .matches-container {
+            margin: 0 16px;
+        }
+
+        .date-header {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--tg-theme-text-color);
+            margin: 20px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: capitalize;
+        }
+
+        .date-header::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background: var(--tg-theme-button-color);
+            border-radius: 2px;
+        }
+
+        .match-card {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .match-card:active {
+            transform: scale(0.98);
+            background: rgba(0,122,255,0.1);
+        }
+
+        .match-card.live {
+            background: linear-gradient(135deg, rgba(255,59,48,0.08) 0%, var(--tg-theme-secondary-bg-color) 100%);
+            border: 1px solid rgba(255,59,48,0.2);
+        }
+
+        .match-live-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff3b30;
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            animation: pulse 2s infinite;
+        }
+
+        .match-teams {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .team-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .team-logo {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border-radius: 50%;
+            background: white;
+            padding: 3px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .team-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--tg-theme-text-color);
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .team-score {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--tg-theme-text-color);
+            min-width: 28px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .match-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            margin-left: 12px;
+            min-width: 60px;
+        }
+
+        .match-time {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+            font-weight: 600;
+        }
+
+        .match-status {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 8px;
+        }
+
+        .match-status.live {
+            background: #ff3b30;
+            color: white;
+        }
+
+        .match-status.finished {
+            background: var(--tg-theme-hint-color);
+            color: white;
+            opacity: 0.7;
+        }
+
+        .match-status.scheduled {
+            background: var(--tg-theme-button-color);
+            color: white;
+        }
+
+        .minute-badge {
+            font-size: 13px;
+            color: #ff3b30;
+            font-weight: 800;
+            margin-top: 2px;
+        }
+
+        .standings-container {
+            margin: 0 16px;
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .standings-header {
+            display: grid;
+            grid-template-columns: 36px 1fr 36px 36px 40px 40px;
+            padding: 14px 12px;
+            background: var(--tg-theme-bg-color);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--tg-theme-hint-color);
+            text-align: center;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .standings-row {
+            display: grid;
+            grid-template-columns: 36px 1fr 36px 36px 40px 40px;
+            padding: 12px;
+            align-items: center;
+            border-bottom: 1px solid rgba(0,0,0,0.03);
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .standings-row:active {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .standings-row:last-child {
+            border-bottom: none;
+        }
+
+        .position {
+            font-weight: 800;
+            text-align: center;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 12px;
+            margin: 0 auto;
+        }
+
+        .position.champion {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #000;
+        }
+
+        .position.cl {
+            background: #007aff;
+            color: white;
+        }
+
+        .position.el {
+            background: #ff9500;
+            color: white;
+        }
+
+        .position.conference {
+            background: #32c759;
+            color: white;
+        }
+
+        .position.relegation {
+            background: #ff3b30;
+            color: white;
+        }
+
+        .team-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            overflow: hidden;
+            padding-left: 4px;
+        }
+
+        .team-cell img {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .team-cell span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+        }
+
+        .stats-cell {
+            text-align: center;
+            font-size: 13px;
+            color: var(--tg-theme-text-color);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .scorers-container {
+            margin: 0 16px;
+        }
+
+        .scorer-card {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.2s;
+        }
+
+        .scorer-card:active {
+            transform: scale(0.98);
+            background: rgba(0,122,255,0.1);
+        }
+
+        .scorer-rank {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--tg-theme-button-color), #0051d5);
+            color: var(--tg-theme-button-text-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .scorer-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .scorer-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--tg-theme-text-color);
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .scorer-team {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color);
+            font-weight: 500;
+        }
+
+        .scorer-stats {
+            text-align: right;
+        }
+
+        .scorer-goals {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--tg-theme-accent-text-color);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .scorer-assists {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, var(--tg-theme-secondary-bg-color) 25%, var(--tg-theme-bg-color) 50%, var(--tg-theme-secondary-bg-color) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            height: 100px;
+            margin-bottom: 10px;
+            border-radius: 16px;
+        }
+
+        .error-container {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .error-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .error-text {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: var(--tg-theme-text-color);
+        }
+
+        .retry-btn {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .retry-btn:active {
+            transform: scale(0.95);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .empty-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-text {
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .legend {
+            margin: 16px;
+            padding: 16px;
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--tg-theme-text-color);
+        }
+
+        .legend-title {
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--tg-theme-text-color);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .last-update {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+            text-align: center;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .ptr-indicator {
+            text-align: center;
+            padding: 20px;
+            color: var(--tg-theme-hint-color);
+            font-size: 14px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .ptr-indicator.visible {
+            display: block;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--tg-theme-bg-color);
+            width: 100%;
+            max-height: 80vh;
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--tg-theme-secondary-bg-color);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            background: var(--tg-theme-secondary-bg-color);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .match-detail-score {
+            text-align: center;
+            font-size: 48px;
+            font-weight: 800;
+            margin: 20px 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .match-detail-teams {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .detail-team {
+            text-align: center;
+            flex: 1;
+        }
+
+        .detail-team img {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 10px;
+        }
+
+        .detail-team-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .detail-info {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .detail-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .detail-info-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: var(--tg-theme-hint-color);
+            font-size: 14px;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div>
+                <div class="header-title">⚽ Football Database</div>
+                <div class="header-subtitle" id="statusText">Caricamento...</div>
+            </div>
+            <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="ptr-indicator" id="ptrIndicator">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 8px;">
+            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        Rilascia per aggiornare...
+    </div>
+
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="switchTab('matches')" data-tab="matches">Partite</button>
+        <button class="nav-tab" onclick="switchTab('standings')" data-tab="standings">Classifiche</button>
+        <button class="nav-tab" onclick="switchTab('scorers')" data-tab="scorers">Marcatori</button>
+    </div>
+
+    <div class="competition-section">
+        <div class="section-header">Seleziona Competizione</div>
+        <div class="competition-grid" id="competitionGrid"></div>
+    </div>
+
+    <div id="contentArea"></div>
+    <div class="last-update" id="lastUpdate"></div>
+
+    <div class="modal-overlay" id="matchModal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-title">Dettagli Partita</div>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            API_KEY: 'e87c9bf2a8d74557b85159bb408a57c5',
+            API_BASE: 'https://api.football-data.org/v4',
+            REFRESH_INTERVAL: 60000,
+            CACHE_DURATION: 30000
+        };
+
+        const COMPETITIONS = [
+            { id: 'PL', name: 'Premier', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', country: 'England' },
+            { id: 'PD', name: 'La Liga', flag: '🇪🇸', country: 'Spain' },
+            { id: 'SA', name: 'Serie A', flag: '🇮🇹', country: 'Italy' },
+            { id: 'BL1', name: 'Bundes', flag: '🇩🇪', country: 'Germany' },
+            { id: 'FL1', name: 'Ligue 1', flag: '🇫🇷', country: 'France' },
+            { id: 'CL', name: 'Champions', flag: '🇪🇺', country: 'Europe' },
+            { id: 'EL', name: 'Europa', flag: '🇪🇺', country: 'Europe' },
+            { id: 'EC', name: 'Conference', flag: '🇪🇺', country: 'Europe' }
+        ];
+
+        let state = {
+            currentTab: 'matches',
+            selectedCompetition: 'SA',
+            loading: false,
+            lastUpdate: null,
+            liveMatches: 0
+        };
+
+        let cache = {
+            matches: {},
+            standings: {},
+            scorers: {}
+        };
+
+        let tg = window.Telegram.WebApp;
+
+        function init() {
+            if (tg) {
+                tg.expand();
+                tg.ready();
+                applyTheme();
+                setupPullToRefresh();
+            }
+            
+            renderCompetitions();
+            loadData();
+            
+            setInterval(() => {
+                if (!state.loading) loadData(true);
+            }, CONFIG.REFRESH_INTERVAL);
+        }
+
+        function applyTheme() {
+            if (!tg) return;
+            const params = tg.themeParams;
+            const root = document.documentElement;
+            
+            if (params.bg_color) root.style.setProperty('--tg-theme-bg-color', params.bg_color);
+            if (params.text_color) root.style.setProperty('--tg-theme-text-color', params.text_color);
+            if (params.hint_color) root.style.setProperty('--tg-theme-hint-color', params.hint_color);
+            if (params.button_color) root.style.setProperty('--tg-theme-button-color', params.button_color);
+            if (params.button_text_color) root.style.setProperty('--tg-theme-button-text-color', params.button_text_color);
+            if (params.secondary_bg_color) root.style.setProperty('--tg-theme-secondary-bg-color', params.secondary_bg_color);
+            if (params.header_bg_color) root.style.setProperty('--tg-theme-header-bg-color', params.header_bg_color);
+            
+            tg.setHeaderColor(params.bg_color || '#ffffff');
+        }
+
+        function setupPullToRefresh() {
+            let startY = 0;
+            let isPulling = false;
+            
+            document.addEventListener('touchstart', (e) => {
+                if (window.scrollY === 0) {
+                    startY = e.touches[0].clientY;
+                    isPulling = true;
+                }
+            }, { passive: true });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (!isPulling) return;
+                const diff = e.touches[0].clientY - startY;
+                if (diff > 80 && window.scrollY === 0) {
+                    document.getElementById('ptrIndicator').classList.add('visible');
+                    if (diff > 140) refreshData();
+                }
+            }, { passive: true });
+            
+            document.addEventListener('touchend', () => {
+                isPulling = false;
+                document.getElementById('ptrIndicator').classList.remove('visible');
+            });
+        }
+
+        async function fetchFromAPI(endpoint) {
+            try {
+                const response = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
+                    headers: {
+                        'X-Auth-Token': CONFIG.API_KEY
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+
+        async function loadData(silent = false) {
+            if (state.loading) return;
+            state.loading = true;
+            
+            const btn = document.getElementById('refreshBtn');
+            if (!silent) {
+                document.getElementById('contentArea').innerHTML = 
+                    Array(5).fill('<div class="skeleton skeleton-card"></div>').join('');
+            }
+            
+            const compId = state.selectedCompetition;
+            const cacheKey = `${compId}_${new Date().toDateString()}`;
+            
+            try {
+                switch (state.currentTab) {
+                    case 'matches':
+                        const forceRefresh = cache.matches[cacheKey] && 
+                            cache.matches[cacheKey].data.some(m => m.status === 'IN_PLAY');
+                        
+                        if (!cache.matches[cacheKey] || forceRefresh || 
+                            Date.now() - cache.matches[cacheKey].timestamp > CONFIG.CACHE_DURATION) {
+                            
+                            const data = await fetchFromAPI(
+                                `/competitions/${compId}/matches?status=SCHEDULED,LIVE,FINISHED&dateFrom=${getToday()}&dateTo=${getFutureDate(7)}`
+                            );
+                            cache.matches[cacheKey] = {
+                                data: data.matches || [],
+                                timestamp: Date.now()
+                            };
+                        }
+                        renderMatches(cache.matches[cacheKey].data);
+                        break;
+                        
+                    case 'standings':
+                        if (!cache.standings[cacheKey] || 
+                            Date.now() - cache.standings[cacheKey].timestamp > CONFIG.CACHE_DURATION * 2) {
+                            const data = await fetchFromAPI(`/competitions/${compId}/standings`);
+                            cache.standings[cacheKey] = {
+                                data: data.standings?.[0]?.table || [],
+                                timestamp: Date.now()
+                            };
+                        }
+                        renderStandings(cache.standings[cacheKey].data);
+                        break;
+                        
+                    case 'scorers':
+                        if (!cache.scorers[cacheKey] || 
+                            Date.now() - cache.scorers[cacheKey].timestamp > CONFIG.CACHE_DURATION * 4) {
+                            const data = await fetchFromAPI(`/competitions/${compId}/scorers?limit=20`);
+                            cache.scorers[cacheKey] = {
+                                data: data.scorers || [],
+                                timestamp: Date.now()
+                            };
+                        }
+                        renderScorers(cache.scorers[cacheKey].data);
+                        break;
+                }
+                
+                state.lastUpdate = new Date();
+                updateStatus();
+                
+            } catch (error) {
+                renderError(error.message);
+            } finally {
+                state.loading = false;
+                btn.classList.remove('spinning');
+            }
+        }
+
+        function getToday() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function getFutureDate(days) {
+            const date = new Date();
+            date.setDate(date.getDate() + days);
+            return date.toISOString().split('T')[0];
+        }
+
+        function renderMatches(matches) {
+            const container = document.getElementById('contentArea');
+            
+            if (!matches || matches.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📅</div>
+                        <div class="empty-text">Nessuna partita programmata</div>
+                    </div>
+                `;
+                state.liveMatches = 0;
+                return;
+            }
+
+            matches.sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+            
+            const grouped = {};
+            matches.forEach(match => {
+                const date = new Date(match.utcDate);
+                const today = new Date();
+                const isToday = date.toDateString() === today.toDateString();
+                
+                let dateKey;
+                if (isToday) {
+                    dateKey = 'Oggi';
+                } else {
+                    dateKey = date.toLocaleDateString('it-IT', { 
+                        weekday: 'long', 
+                        day: 'numeric', 
+                        month: 'long' 
+                    });
+                }
+                
+                if (!grouped[dateKey]) grouped[dateKey] = [];
+                grouped[dateKey].push(match);
+            });
+
+            let html = '';
+            let liveCount = 0;
+
+            Object.entries(grouped).forEach(([date, dateMatches]) => {
+                html += `<div class="date-header">${date}</div><div class="matches-container">`;
+                
+                dateMatches.forEach(match => {
+                    const isLive = match.status === 'IN_PLAY';
+                    const isFinished = match.status === 'FINISHED';
+                    
+                    if (isLive) liveCount++;
+                    
+                    const homeScore = match.score?.fullTime?.home ?? '-';
+                    const awayScore = match.score?.fullTime?.away ?? '-';
+                    
+                    const matchDate = new Date(match.utcDate);
+                    const matchTime = matchDate.toLocaleTimeString('it-IT', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+
+                    let statusClass = 'scheduled';
+                    let statusText = 'Programmata';
+                    
+                    if (isLive) {
+                        statusClass = 'live';
+                        statusText = 'LIVE';
+                    } else if (isFinished) {
+                        statusClass = 'finished';
+                        statusText = 'Finita';
+                    }
+
+                    const minute = match.minute ? `<div class="minute-badge">${match.minute}'</div>` : '';
+                    const liveBadge = isLive ? '<div class="match-live-badge">LIVE</div>' : '';
+
+                    html += `
+                        <div class="match-card ${isLive ? 'live' : ''}" onclick="showMatchDetail(${match.id})">
+                            ${liveBadge}
+                            <div class="match-teams">
+                                <div class="team-row">
+                                    <img src="${match.homeTeam.crest || ''}" 
+                                         class="team-logo" 
+                                         onerror="this.style.display='none'"
+                                         alt="">
+                                    <span class="team-name">${match.homeTeam.shortName || match.homeTeam.name}</span>
+                                    <span class="team-score">${homeScore}</span>
+                                </div>
+                                <div class="team-row">
+                                    <img src="${match.awayTeam.crest || ''}" 
+                                         class="team-logo"
+                                         onerror="this.style.display='none'"
+                                         alt="">
+                                    <span class="team-name">${match.awayTeam.shortName || match.awayTeam.name}</span>
+                                    <span class="team-score">${awayScore}</span>
+                                </div>
+                            </div>
+                            <div class="match-info">
+                                <div class="match-time">${isLive ? 'LIVE' : matchTime}</div>
+                                <div class="match-status ${statusClass}">${statusText}</div>
+                                ${minute}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+            state.liveMatches = liveCount;
+        }
+
+        function renderStandings(standings) {
+            const container = document.getElementById('contentArea');
+            
+            if (!standings || standings.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📊</div>
+                        <div class="empty-text">Classifica non disponibile</div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="standings-container">
+                    <div class="standings-header">
+                        <span></span>
+                        <span style="text-align: left; padding-left: 4px;">Squadra</span>
+                        <span>Pt</span>
+                        <span>G</span>
+                        <span>DR</span>
+                        <span>GF</span>
+                    </div>
+            `;
+
+            standings.forEach(team => {
+                const pos = team.position;
+                let posClass = '';
+                
+                const comp = state.selectedCompetition;
+                const totalTeams = standings.length;
+                
+                if (pos === 1) posClass = 'champion';
+                else if (['PL', 'PD', 'SA', 'BL1'].includes(comp) && pos <= 4) posClass = 'cl';
+                else if (comp === 'FL1' && pos <= 3) posClass = 'cl';
+                else if (['CL', 'EL', 'EC'].includes(comp)) posClass = 'cl';
+                else if (['PL', 'SA', 'PD', 'BL1'].includes(comp) && pos === 5) posClass = 'el';
+                else if (comp === 'FL1' && (pos === 4 || pos === 5)) posClass = 'el';
+                else if (pos >= totalTeams - 2 && !['CL', 'EL', 'EC'].includes(comp)) posClass = 'relegation';
+
+                html += `
+                    <div class="standings-row" onclick="showTeamStats(${team.team.id})">
+                        <div class="position ${posClass}">${pos}</div>
+                        <div class="team-cell">
+                            <img src="${team.team.crest || ''}" 
+                                 onerror="this.style.display='none'"
+                                 alt="">
+                            <span>${team.team.shortName || team.team.name}</span>
+                        </div>
+                        <div class="stats-cell">${team.points}</div>
+                        <div class="stats-cell">${team.playedGames}</div>
+                        <div class="stats-cell">${team.goalDifference > 0 ? '+' : ''}${team.goalDifference}</div>
+                        <div class="stats-cell">${team.goalsFor}</div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            
+            html += `<div class="legend">
+                <div class="legend-title">Legenda</div>
+                <div class="legend-item"><div class="legend-color" style="background: linear-gradient(135deg, #FFD700, #FFA500);"></div><span>Campione</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #007aff;"></div><span>Champions League</span></div>
+                ${['PL', 'SA', 'PD', 'BL1', 'FL1'].includes(state.selectedCompetition) ? '<div class="legend-item"><div class="legend-color" style="background: #ff9500;"></div><span>Europa League</span></div>' : ''}
+                ${!['CL', 'EL', 'EC'].includes(state.selectedCompetition) ? '<div class="legend-item"><div class="legend-color" style="background: #ff3b30;"></div><span>Retrocessione</span></div>' : ''}
+            </div>`;
+
+            container.innerHTML = html;
+        }
+
+        function renderScorers(scorers) {
+            const container = document.getElementById('contentArea');
+            
+            if (!scorers || scorers.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">⚽</div>
+                        <div class="empty-text">Nessun dato marcatori</div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="scorers-container">';
+            
+            scorers.forEach((scorer, index) => {
+                const goals = scorer.goals || 0;
+                const assists = scorer.assists || 0;
+                
+                html += `
+                    <div class="scorer-card" onclick="showPlayerStats(${scorer.player.id})">
+                        <div class="scorer-rank">${index + 1}</div>
+                        <div class="scorer-info">
+                            <div class="scorer-name">${scorer.player.name}</div>
+                            <div class="scorer-team">${scorer.team.name}</div>
+                        </div>
+                        <div class="scorer-stats">
+                            <div class="scorer-goals">${goals} ⚽</div>
+                            ${assists > 0 ? `<div class="scorer-assists">${assists} 👟</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function renderCompetitions() {
+            const grid = document.getElementById('competitionGrid');
+            grid.innerHTML = COMPETITIONS.map(comp => `
+                <div class="competition-card ${state.selectedCompetition === comp.id ? 'active' : ''}" 
+                     onclick="selectCompetition('${comp.id}')">
+                    <div class="competition-flag">${comp.flag}</div>
+                    <div class="competition-name">${comp.name}</div>
+                </div>
+            `).join('');
+        }
+
+        function selectCompetition(id) {
+            state.selectedCompetition = id;
+            renderCompetitions();
+            loadData();
+            if (tg) tg.HapticFeedback.selectionChanged();
+        }
+
+        function switchTab(tab) {
+            state.currentTab = tab;
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            loadData();
+            if (tg) tg.HapticFeedback.impactOccurred('light');
+        }
+
+        function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.classList.add('spinning');
+            if (tg) tg.HapticFeedback.impactOccurred('medium');
+            
+            const compId = state.selectedCompetition;
+            const today = new Date().toDateString();
+            delete cache[state.currentTab][`${compId}_${today}`];
+            
+            loadData();
+        }
+
+        function updateStatus() {
+            const statusText = document.getElementById('statusText');
+            const time = state.lastUpdate.toLocaleTimeString('it-IT', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            if (state.liveMatches > 0) {
+                statusText.innerHTML = `<span style="color: #ff3b30; font-weight: 700;">● ${state.liveMatches} partita${state.liveMatches > 1 ? 'e' : ''} in diretta</span>`;
+            } else {
+                statusText.textContent = `Aggiornato alle ${time}`;
+            }
+            
+            document.getElementById('lastUpdate').textContent = `Ultimo aggiornamento: ${time}`;
+        }
+
+        function renderError(message) {
+            const container = document.getElementById('contentArea');
+            container.innerHTML = `
+                <div class="error-container">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-text">Errore di connessione</div>
+                    <div style="font-size: 14px; margin-bottom: 20px; color: var(--tg-theme-hint-color);">
+                        ${message || 'Impossibile caricare i dati'}
+                    </div>
+                    <button class="retry-btn" onclick="loadData()">Riprova</button>
+                </div>
+            `;
+        }
+
+        async function showMatchDetail(matchId) {
+            if (!tg) return;
+            
+            const compId = state.selectedCompetition;
+            const today = new Date().toDateString();
+            const matches = cache.matches[`${compId}_${today}`]?.data || [];
+            const match = matches.find(m => m.id === matchId);
+            
+            if (!match) return;
+            
+            tg.HapticFeedback.impactOccurred('light');
+            
+            const modal = document.getElementById('matchModal');
+            const body = document.getElementById('modalBody');
+            
+            const homeScore = match.score?.fullTime?.home ?? '-';
+            const awayScore = match.score?.fullTime?.away ?? '-';
+            const status = match.status === 'IN_PLAY' ? '🔴 In corso' : 
+                          match.status === 'FINISHED' ? '✓ Finita' : '⏰ Programmata';
+            
+            body.innerHTML = `
+                <div class="match-detail-score">${homeScore} - ${awayScore}</div>
+                <div class="match-detail-teams">
+                    <div class="detail-team">
+                        <img src="${match.homeTeam.crest || ''}" onerror="this.src='https://via.placeholder.com/60'" alt="">
+                        <div class="detail-team-name">${match.homeTeam.name}</div>
+                    </div>
+                    <div style="font-size: 14px; color: var(--tg-theme-hint-color);">VS</div>
+                    <div class="detail-team">
+                        <img src="${match.awayTeam.crest || ''}" onerror="this.src='https://via.placeholder.com/60'" alt="">
+                        <div class="detail-team-name">${match.awayTeam.name}</div>
+                    </div>
+                </div>
+                <div class="detail-info">
+                    <div class="detail-info-row">
+                        <span class="detail-label">Stato</span>
+                        <span class="detail-value" style="color: ${match.status === 'IN_PLAY' ? '#ff3b30' : 'inherit'}">${status}</span>
+                    </div>
+                    <div class="detail-info-row">
+                        <span class="detail-label">Data</span>
+                        <span class="detail-value">${new Date(match.utcDate).toLocaleString('it-IT')}</span>
+                    </div>
+                    <div class="detail-info-row">
+                        <span class="detail-label">Giornata</span>
+                        <span class="detail-value">${match.matchday || 'N/D'}</span>
+                    </div>
+                    <div class="detail-info-row">
+                        <span class="detail-label">Stadio</span>
+                        <span class="detail-value">${match.venue || 'N/D'}</span>
+                    </div>
+                    <div class="detail-info-row">
+                        <span class="detail-label">Arbitro</span>
+                        <span class="detail-value">${match.referee || 'N/D'}</span>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.add('active');
+        }
+
+        function closeModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('matchModal').classList.remove('active');
+        }
+
+        function showTeamStats(teamId) {
+            if (!tg) return;
+            tg.HapticFeedback.impactOccurred('light');
+            tg.showAlert('Dettagli squadra in arrivo nella prossima versione!');
+        }
+
+        function showPlayerStats(playerId) {
+            if (!tg) return;
+            tg.HapticFeedback.impactOccurred('light');
+            tg.showAlert('Statistiche giocatore in arrivo nella prossima versione!');
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+        
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && state.lastUpdate && 
+                Date.now() - state.lastUpdate > 60000) {
+                loadData(true);
+            }
+        });
+    </script>
+</body>
+</html>
