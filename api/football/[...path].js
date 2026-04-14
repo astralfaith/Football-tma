@@ -1,7 +1,8 @@
 // /api/football/[...path].js
 export default async function handler(req, res) {
-  // CORS
+  // AGGIUNGI QUESTA RIGA:
   res.setHeader('Access-Control-Allow-Origin', '*')
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
@@ -10,20 +11,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Verifica JWT opzionale (puoi abilitarla per sicurezza extra)
     const authHeader = req.headers.authorization
-    if (!authHeader?.startsWith('Bearer ')) {
-      // Per ora lasciamo aperta, ma puoi bloccare qui
-      // return res.status(401).json({ error: 'Unauthorized' })
-    }
+    // Verifica JWT opzionale - per ora commentata per test
+    // if (!authHeader?.startsWith('Bearer ')) {
+    //   return res.status(401).json({ error: 'Unauthorized' })
+    // }
 
-    // Costruisci URL Api-Football
     const { path } = req.query
     const endpoint = Array.isArray(path) ? path.join('/') : path
-    const queryString = new URLSearchParams(req.query).toString()
-    const url = `https://v3.football.api-sports.io/${endpoint}${queryString ? '?' + queryString : ''}`
+    
+    // Costruisci query string
+    const queryParams = { ...req.query }
+    delete queryParams.path
+    const queryString = Object.keys(queryParams).length > 0 
+      ? '?' + new URLSearchParams(queryParams).toString() 
+      : ''
+    
+    const url = `https://v3.football.api-sports.io/${endpoint}${queryString}`
 
-    // Chiama Api-Football (SERVER SIDE - niente CORS!)
     const response = await fetch(url, {
       headers: {
         'x-apisports-key': process.env.API_FOOTBALL_KEY,
@@ -37,7 +42,6 @@ export default async function handler(req, res) {
 
     const data = await response.json()
 
-    // Cache per 5 minuti (riduce chiamate API)
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate')
     res.status(200).json(data)
 
