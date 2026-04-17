@@ -1,22 +1,89 @@
 // /api/auth/telegram.js
-import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 
-// Configurazione Google Sheets (semplificata, senza libreria esterna)
-const getSheetsData = async () => {
+// Cache semplice in memoria (si resetta ogni deploy, ma va benissimo)
+const cache = new Map()
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minuti in millisecondi
+
+// Funzione per ottenere dati con cache
+const getCachedOrFetch = async (telegramId) => {
+  const cacheKey = `user_${telegramId}`
+  const now = Date.now()
+  
+  // Controlla se c'è in cache e non è scaduto
+  const cached = cache.get(cacheKey)
+  if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+    console.log('Cache hit per utente:', telegramId)
+    return cached.data
+  }
+  
+  // Altrimenti fetcha da Google Sheets
+  console.log('Cache miss, fetch da Google Sheets per utente:', telegramId)
+  const data = await getUserFromGoogleSheet(telegramId)
+  
+  // Salva in cache
+  if (data) {
+    cache.set(cacheKey, {
+      data: data,
+      timestamp: now
+    })
+  }
+  
+  return data
+}
+
+// Legge dati direttamente da Google Sheets API
+const getUserFromGoogleSheet = async (telegramId) => {
+  const apiKey = process.env.GOOGLE_API_KEY
   const spreadsheetId = process.env.SPREADSHEET_ID
-  const apiKey = process.env.GOOGLE_API_KEY // Altrimenti usa service account
   
-  // Metodo 1: Se usi Google Sheets API con API Key (pubblico ma limitato)
-  // const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Abbonamenti!A2:P1000?key=${apiKey}`
+  if (!apiKey || !spreadsheetId) {
+    throw new Error('Variabili d\'ambiente mancanti: GOOGLE_API_KEY o SPREADSHEET_ID')
+  }
   
-  // Metodo 2: Usa un fetch a un endpoint che gestisci tu, o un JSON statico per test
-  // Per semplicità, qui simulo la lettura da un JSON locale o endpoint
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Abbonamenti!A2:P1000?key=${apiKey}`
   
-  // METODO CONSIGLIATO: Leggi da un JSON hostato su GitHub o da un endpoint Make
-  const response = await fetch(process.env.SUBSCRIPTIONS_JSON_URL || 'https://api.npoint.io/tuo-endpoint')
+  const response = await fetch(url)
+  
+  if (!response.ok) {
+    const errorData = await response.json()
+    console.error('Errore Google Sheets:', errorData)
+    throw new Error(`Google Sheets API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`)
+  }
+  
   const data = await response.json()
-  return data.users || []
+  const rows = data.values || []
+  
+  if (rows.length === 0) {
+    return null
+  }
+  
+  // Trova l'utente (colonna A = telegram_id, indice 0)
+  const userRow = rows.find(row => String(row[0]).trim() === String(telegramId).trim())
+  
+  if (!userRow) {
+    return null
+  }
+  
+  // Mappa i dati dalle colonne
+  return {
+    telegram_id: userRow[0],
+    username: userRow[1],
+    nome_visualizzato: userRow[2],
+    data_inizio: userRow[3],
+    data_scadenza: userRow[4],
+    stato: userRow[5],
+    serie_a: userRow[6],
+    champions_league: userRow[7],
+    europa_league: userRow[8],
+    premier_league: userRow[9],
+    la_liga: userRow[10],
+    bundesliga: userRow[11],
+    ligue_1: userRow[12],
+    world_cup: userRow[13],
+    euro: userRow[14],
+    note: userRow[15]
+  }
 }
 
 export default async function handler(req, res) {
@@ -48,15 +115,19 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Invalid user data' })
     }
 
-    // LEGGI DATI ABBONAMENTI
-    const users = await getSheetsData()
-    
-    // Trova utente per telegram_id
-    const userRow = users.find(u => String(u.telegram_id) === String(userData.id))
+    // LEGGI DA GOOGLE SHEETS (con cache)
+    const userRow = await getCachedOrFetch(userData.id)
     
     if (!userRow) {
       return res.status(403).json({ 
         error: 'Utente non trovato. Contatta l\'amministratore per attivare un abbonamento.' 
+      })
+    }
+
+    // Controlla stato
+    if (userRow.stato !== 'ATTIVO') {
+      return res.status(403).json({ 
+        error: 'Abbonamento non attivo.' 
       })
     }
 
@@ -65,13 +136,19 @@ export default async function handler(req, res) {
     today.setHours(0, 0, 0, 0)
     const expiryDate = new Date(userRow.data_scadenza)
     
+    if (isNaN(expiryDate.getTime())) {
+      return res.status(403).json({ 
+        error: 'Data scadenza non valida.' 
+      })
+    }
+    
     if (today > expiryDate) {
       return res.status(403).json({ 
         error: `Abbonamento scaduto il ${userRow.data_scadenza}. Rinnova per continuare.` 
       })
     }
 
-    // Estrai competizioni attive (quelle con TRUE/1/VERO)
+    // Estrai competizioni con TRUE/1/VERO/X/SI
     const leagues = []
     const leagueMap = {
       'serie_a': 'serie_a',
@@ -86,9 +163,10 @@ export default async function handler(req, res) {
     }
     
     for (const [key, value] of Object.entries(userRow)) {
-      if (leagueMap[key]) {
-        const val = String(value).toUpperCase()
-        if (val === 'TRUE' || val === '1' || val === 'VERO' || val === 'YES') {
+      if (leagueMap[key] && value) {
+        const val = String(value).toUpperCase().trim()
+        // Accetta: TRUE, 1, VERO, YES, X (croce), SI, SÌ
+        if (['TRUE', '1', 'VERO', 'YES', 'X', 'SI', 'SÌ'].includes(val)) {
           leagues.push(key)
         }
       }
@@ -106,7 +184,7 @@ export default async function handler(req, res) {
       username: userData.username,
       firstName: userData.first_name,
       displayName: userRow.nome_visualizzato || userData.first_name,
-      leagues: leagues, // SOLO le competizioni con TRUE
+      leagues: leagues,
       exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30 giorni
     }, process.env.JWT_SECRET)
 
@@ -123,6 +201,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Auth error:', error)
-    res.status(500).json({ error: 'Internal server error', details: error.message })
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error.message 
+    })
   }
 }
