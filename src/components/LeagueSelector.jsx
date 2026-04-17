@@ -70,7 +70,7 @@ const AVAILABLE_LEAGUES = {
   },
   euro: {
     id: 4,
-    name 'Europei',
+    name: 'Europei',
     country: 'Europa',
     icon: Globe,
     color: 'bg-indigo-600',
