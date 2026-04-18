@@ -17,7 +17,8 @@ export const useFootballData = (leagueId, token) => {
       setData(prev => ({ ...prev, loading: true, error: null }))
       
       try {
-        const season = 2025 // o dinamico
+        const season = new Date().getFullYear() // 2026
+
         
         const [standingsRes, liveRes, scorersRes] = await Promise.all([
           getStandings(leagueId, season, token).catch(() => null),
