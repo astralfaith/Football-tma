@@ -1,8 +1,5 @@
-// /api/football/[...path].js
-export default async function handler(req, res) {
-  // AGGIUNGI QUESTA RIGA:
+// /export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
@@ -11,16 +8,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const authHeader = req.headers.authorization
-    // Verifica JWT opzionale - per ora commentata per test
-    // if (!authHeader?.startsWith('Bearer ')) {
-    //   return res.status(401).json({ error: 'Unauthorized' })
-    // }
-
     const { path } = req.query
     const endpoint = Array.isArray(path) ? path.join('/') : path
     
-    // Costruisci query string
     const queryParams = { ...req.query }
     delete queryParams.path
     const queryString = Object.keys(queryParams).length > 0 
@@ -29,6 +19,13 @@ export default async function handler(req, res) {
     
     const url = `https://v3.football.api-sports.io/${endpoint}${queryString}`
 
+    // DEBUG LOGS
+    console.log('=== FOOTBALL API REQUEST ===')
+    console.log('Endpoint:', endpoint)
+    console.log('Query params:', queryParams)
+    console.log('Full URL:', url)
+    console.log('API Key exists:', !!process.env.API_FOOTBALL_KEY)
+
     const response = await fetch(url, {
       headers: {
         'x-apisports-key': process.env.API_FOOTBALL_KEY,
@@ -36,11 +33,18 @@ export default async function handler(req, res) {
       }
     })
 
+    console.log('API Response status:', response.status)
+    
     if (!response.ok) {
+      const errorText = await response.text()
+      console.log('API Error response:', errorText)
       throw new Error(`API Football error: ${response.status}`)
     }
 
     const data = await response.json()
+    console.log('API Response data length:', JSON.stringify(data).length)
+    console.log('Response has results:', data.results || 0)
+    console.log('===========================')
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate')
     res.status(200).json(data)
