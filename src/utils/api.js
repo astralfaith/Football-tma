@@ -1,6 +1,6 @@
 // Chiamate API al backend Vercel
 
-const API_BASE = '/api'
+const API_BASE = 'https://football-database-chi.vercel.app/api'
 
 export const authenticateUser = async (initData) => {
   const response = await fetch(`${API_BASE}/auth/telegram`, {
