@@ -1,4 +1,4 @@
-// /export default async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
@@ -11,6 +11,38 @@
     const { path } = req.query
     const endpoint = Array.isArray(path) ? path.join('/') : path
     
+    // MOCK DATI PER TEST - rimuovi dopo
+    if (endpoint.includes('standings')) {
+      return res.status(200).json({
+        response: [{
+          league: {
+            standings: [[
+              { rank: 1, team: { name: 'Inter', logo: '' }, points: 80, all: { played: 30, win: 25, draw: 5, lose: 0 } },
+              { rank: 2, team: { name: 'Milan', logo: '' }, points: 70, all: { played: 30, win: 20, draw: 10, lose: 0 } },
+              { rank: 3, team: { name: 'Juventus', logo: '' }, points: 65, all: { played: 30, win: 18, draw: 11, lose: 1 } }
+            ]]
+          }
+        }]
+      })
+    }
+
+    if (endpoint.includes('fixtures') && endpoint.includes('live')) {
+      return res.status(200).json({
+        response: [
+          { fixture: { id: 1, status: { short: 'LIVE' } }, teams: { home: { name: 'Inter' }, away: { name: 'Milan' } }, goals: { home: 2, away: 1 } }
+        ]
+      })
+    }
+
+    if (endpoint.includes('topscorers')) {
+      return res.status(200).json({
+        response: [
+          { player: { name: 'Lautaro' }, statistics: [{ team: { name: 'Inter' }, goals: { total: 20 }, games: { appearences: 25 } }] }
+        ]
+      })
+    }
+    // FINE MOCK
+
     const queryParams = { ...req.query }
     delete queryParams.path
     const queryString = Object.keys(queryParams).length > 0 
@@ -19,13 +51,6 @@
     
     const url = `https://v3.football.api-sports.io/${endpoint}${queryString}`
 
-    // DEBUG LOGS
-    console.log('=== FOOTBALL API REQUEST ===')
-    console.log('Endpoint:', endpoint)
-    console.log('Query params:', queryParams)
-    console.log('Full URL:', url)
-    console.log('API Key exists:', !!process.env.API_FOOTBALL_KEY)
-
     const response = await fetch(url, {
       headers: {
         'x-apisports-key': process.env.API_FOOTBALL_KEY,
@@ -33,20 +58,11 @@
       }
     })
 
-    console.log('API Response status:', response.status)
-    
     if (!response.ok) {
-      const errorText = await response.text()
-      console.log('API Error response:', errorText)
       throw new Error(`API Football error: ${response.status}`)
     }
 
     const data = await response.json()
-    console.log('API Response data length:', JSON.stringify(data).length)
-    console.log('Response has results:', data.results || 0)
-    console.log('===========================')
-
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate')
     res.status(200).json(data)
 
   } catch (error) {
