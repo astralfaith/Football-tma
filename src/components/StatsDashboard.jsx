@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Activity, Users, Goal } from 'lucide-react'
 import { useFootballData } from '../hooks/useFootballData'
@@ -9,9 +9,33 @@ const StatsDashboard = ({ user }) => {
   const { leagueId } = useParams()
   const navigate = useNavigate()
   const token = localStorage.getItem('football_stats_token')
-  const [activeTab, setActiveTab] = useState('standings') // standings, live, scorers
+  const [activeTab, setActiveTab] = useState('standings')
+  const [apiStatus, setApiStatus] = useState('In attesa...')
+  const [debugLog, setDebugLog] = useState([])
   
   const { standings, live, topScorers, loading, error } = useFootballData(leagueId, token)
+
+  const addLog = (msg) => {
+    setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`])
+  }
+
+  useEffect(() => {
+    addLog(`Mount - League: ${leagueId}, Token: ${token ? 'OK' : 'NO'}`)
+    
+    if (loading) setApiStatus('Caricamento dati...')
+    else if (error) {
+      setApiStatus(`Errore: ${error}`)
+      addLog(`Errore ricevuto: ${error}`)
+    }
+    else if (standings?.length > 0) {
+      setApiStatus(`Dati ricevuti: ${standings.length} squadre`)
+      addLog(`Standings ricevuti: ${standings.length}`)
+    }
+    else {
+      setApiStatus('Nessun dato ricevuto')
+      addLog('Array standings vuoto o undefined')
+    }
+  }, [loading, error, standings, leagueId, token])
 
   const leagueNames = {
     135: 'Serie A',
@@ -25,21 +49,10 @@ const StatsDashboard = ({ user }) => {
     4: 'Europei'
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    )
-  }
-
-  if (error) {
+  if (!token) {
     return (
       <div className="card text-center py-12 text-red-400">
-        <p>Errore caricamento dati: {error}</p>
-        <button onClick={() => window.location.reload()} className="btn-primary mt-4">
-          Riprova
-        </button>
+        <p>Token mancante. Riapri l'app dal bot.</p>
       </div>
     )
   }
@@ -55,6 +68,33 @@ const StatsDashboard = ({ user }) => {
       </button>
 
       <h2 className="text-2xl font-bold mb-6">{leagueNames[leagueId] || 'Competizione'}</h2>
+
+      {/* DEBUG PANEL */}
+      <div style={{
+        background: '#1a1a2e', 
+        border: '2px solid #e94560', 
+        padding: '15px', 
+        margin: '10px 0 20px 0',
+        borderRadius: '8px',
+        fontSize: '13px',
+        maxHeight: '200px',
+        overflowY: 'auto'
+      }}>
+        <p style={{color: '#e94560', fontWeight: 'bold', marginBottom: '8px'}}>
+          🔧 DEBUG CONSOLE
+        </p>
+        <p style={{color: '#fff', marginBottom: '5px'}}>Status: {apiStatus}</p>
+        <p style={{color: '#aaa', fontSize: '11px', marginBottom: '10px'}}>
+          Token: {token ? '✅' : '❌'} | User: {user?.username || 'N/A'}
+        </p>
+        <div style={{borderTop: '1px solid #333', paddingTop: '8px'}}>
+          {debugLog.map((log, i) => (
+            <p key={i} style={{color: '#0f0', fontSize: '11px', margin: '2px 0'}}>
+              {log}
+            </p>
+          ))}
+        </div>
+      </div>
 
       {/* Tabs */}
       <div className="flex space-x-2 mb-6 border-b border-gray-700 pb-2">
@@ -81,11 +121,20 @@ const StatsDashboard = ({ user }) => {
 
       {/* Content */}
       <div className="space-y-4">
-        {activeTab === 'standings' && <StandingsTable standings={standings} />}
+        {activeTab === 'standings' && (
+          standings?.length > 0 ? (
+            <StandingsTable standings={standings} />
+          ) : (
+            <div className="card text-center py-8 text-gray-400">
+              <p>Nessuna classifica disponibile</p>
+              <p className="text-sm mt-2">Stagione: 2025</p>
+            </div>
+          )
+        )}
         
         {activeTab === 'live' && (
           <div className="space-y-4">
-            {live.length === 0 ? (
+            {live?.length === 0 ? (
               <p className="text-gray-400 text-center py-8">Nessuna partita in corso</p>
             ) : (
               live.map(match => <MatchCard key={match.fixture.id} match={match} />)
@@ -96,23 +145,27 @@ const StatsDashboard = ({ user }) => {
         {activeTab === 'scorers' && (
           <div className="card">
             <h3 className="text-lg font-bold mb-4">Top Marcatori</h3>
-            <div className="space-y-3">
-              {topScorers.map((player, idx) => (
-                <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-0">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-gray-500 w-6">{idx + 1}</span>
-                    <div>
-                      <p className="font-medium">{player.player.name}</p>
-                      <p className="text-sm text-gray-400">{player.statistics[0].team.name}</p>
+            {topScorers?.length > 0 ? (
+              <div className="space-y-3">
+                {topScorers.map((player, idx) => (
+                  <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-0">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-gray-500 w-6">{idx + 1}</span>
+                      <div>
+                        <p className="font-medium">{player.player.name}</p>
+                        <p className="text-sm text-gray-400">{player.statistics[0].team.name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4 text-sm">
+                      <span className="text-green-400">{player.statistics[0].goals.total} gol</span>
+                      <span className="text-gray-500">{player.statistics[0].games.appearences} pres.</span>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-4 text-sm">
-                    <span className="text-green-400">{player.statistics[0].goals.total} gol</span>
-                    <span className="text-gray-500">{player.statistics[0].games.appearences} pres.</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400 text-center py-4">Nessun dato disponibile</p>
+            )}
           </div>
         )}
       </div>
